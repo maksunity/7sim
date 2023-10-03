@@ -1,13 +1,6 @@
-'''
-Написать программу, которая найдет в вики все фото котиков.
-Пояснение. Для выполнения вам необходимо разобраться библиотеками requests, BeautifulSoup,
-узнать что такое дом сайта и и научиться загружать и обрабатывать сайты
-'''
-
 import requests
-import re
 import os
-import json
+import re
 from bs4 import BeautifulSoup as BS
 from urllib.parse import urljoin
 
@@ -16,6 +9,10 @@ def get_link():
     return link
 
 def block_list(url):
+
+    excluded_parts = ['Flag_of', 'Flag_of_the, ']
+    pattern = re.compile(fr"({'|'.join(excluded_parts)})")
+
     invalid_keywords = ['wikipedia-wordmark-en.svg',
                         'wikipedia-tagline-en.svg',
                         'wikipedia.png',
@@ -32,11 +29,24 @@ def block_list(url):
                         '40px-Wiktionary-logo-en-v2.svg.png',
                         '36px-Merge-split-transwiki_default.svg.png',
                         '12px-Commons-logo.svg.png',
-                        '23px*']
+                        '45px-Unbalanced_scales.svg.png',
+                        '19px-Symbol_support_vote.svg.png',
+                        '16px-Wiktionary-logo-en-v2.svg.png',
+                        '40px-Edit-clear.svg.png',
+                        '40px-Crystal_Clear_app_kedit.svg.png',
+                        '40px-Text_document_with_red_question_mark.svg.png',
+                        '40px-Wiki_letter_w.svg.png',
+                        '42px-Ambox_current_red_Americas.svg.png']
+
+    if pattern.search(url):
+        return False
+
     for keyword in invalid_keywords:
         if keyword in url:
             return False
+
     return True
+
 
 def is_desired_th(tag):
     return tag.name == 'th' and tag.get('scope') == 'row' and 'class' not in tag.attrs
@@ -52,8 +62,7 @@ def get_cat_link(link):
                 if a_tag:
                     link = a_tag.get('href')
                     total_link = "https://en.wikipedia.org" + link
-                    print(total_link)
-                    if total_link:
+                    if total_link and block_list(total_link):
                         links.append(total_link)
             return links
         else:
@@ -79,7 +88,7 @@ def main():
     link = get_link()
     links = get_cat_link(link)
     max_images = int(input("Enter the number of pictures to download: "))
-    links_to_visit = links
+    links_to_visit = links[:max_images]  # Ограничиваем список ссылок
     visited_links = set()
     downloaded_images = 0
     image_folder = "cat_images"
@@ -93,8 +102,6 @@ def main():
         visited_links.add(current_url)
         print(f"Visiting: {current_url}")
 
-        links_to_visit.extend(links)
-
         try:
             response = requests.get(current_url)
             if response.status_code == 200:
@@ -103,10 +110,11 @@ def main():
                 for img in images:
                     img_url = urljoin(current_url, img.get('src'))
                     if block_list(img_url):
-                        download_image(img_url, image_folder)
+                        print(img_url)
+                        '''download_image(img_url, image_folder)
                         downloaded_images += 1
                         if downloaded_images >= max_images:
-                            break
+                            break'''
             else:
                 print(f"Failed to fetch images from: {current_url}")
         except Exception as e:
@@ -114,7 +122,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
