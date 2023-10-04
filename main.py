@@ -3,13 +3,15 @@ import os
 import re
 from bs4 import BeautifulSoup as BS
 from urllib.parse import urljoin
+import time
+
 
 def get_link():
     link = 'https://en.wikipedia.org/wiki/List_of_cat_breeds'
     return link
 
-def block_list(url):
 
+def block_list(url):
     excluded_parts = ['Flag_of', 'Flag_of_the, ']
     pattern = re.compile(fr"({'|'.join(excluded_parts)})")
 
@@ -51,6 +53,7 @@ def block_list(url):
 def is_desired_th(tag):
     return tag.name == 'th' and tag.get('scope') == 'row' and 'class' not in tag.attrs
 
+
 def get_cat_link(link):
     links = []
     try:
@@ -71,9 +74,12 @@ def get_cat_link(link):
         print(f"Error scraping links: {e}")
     return links
 
+
 def download_image(url, folder_path):
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36'}
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
+        print(response)
         if response.status_code == 200:
             file_name = os.path.join(folder_path, url.split("/")[-1])
             with open(file_name, 'wb') as file:
@@ -83,6 +89,7 @@ def download_image(url, folder_path):
             print(f"Failed to download: {url}")
     except Exception as e:
         print(f"Error downloading image: {e}")
+
 
 def main():
     link = get_link()
@@ -111,14 +118,16 @@ def main():
                     img_url = urljoin(current_url, img.get('src'))
                     if block_list(img_url):
                         print(img_url)
-                        '''download_image(img_url, image_folder)
+                        download_image(img_url, image_folder)
                         downloaded_images += 1
                         if downloaded_images >= max_images:
-                            break'''
+                            break
             else:
                 print(f"Failed to fetch images from: {current_url}")
         except Exception as e:
             print(f"Error fetching images: {e}")
+        #time.sleep(100)
+
 
 if __name__ == '__main__':
     main()
