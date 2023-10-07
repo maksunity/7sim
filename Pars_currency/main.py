@@ -1,19 +1,25 @@
+'''Создать парсер курс валют и по ним сделтаь графики через Matplotlib'''
+import datetime
+
 import matplotlib.pyplot as plt
 from bs4 import BeautifulSoup as BS
 import numpy as np
 import requests
-
+from window import Window
+import pprint
+import time
+import re
+import locale
 
 url = 'https://ru.investing.com/currencies/streaming-forex-rates-majors'
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.967 YaBrowser/23.9.1.967 Yowser/2.5 Safari/537.36'}
 
 def print_dict_as_columns(dict_curr):
     keys = list(dict_curr.keys())
-    for i in range(len(dict_curr[keys[0]])):  # Используем длину значений первого ключа
+    for i in range(len(dict_curr[keys[0]])):
         for key in keys:
             print(f"{key}: {dict_curr[key][i]}")
-            print(dict_curr)
-
+            #print(dict_curr)
 
 def select_filter(items: dict):
     print('Выберите валюту:')
@@ -23,15 +29,98 @@ def select_filter(items: dict):
 
 def select_from_url(currency: str, link: str) -> dict:
     from datetime import date
-    print(link)
+    # print(link)
     # date (data) need convert to list
     # value -> list
     # percentage -> list
-    return {"Currency": currency, "Link": link, "Date": str(date.today()), "Value": None, "Percentage": None}
+    return {"Currency": currency, "Link": link, "Date": str(date.today())}
 
 
+def choice_time(data_for_choice, currency):
+    print('Строить график от текушего времени, до выбранного\n'
+          'или с определенной даты до определенной?\n')
+    while True:
+        try:
+            choice = int(input('Введите "1" или "2" соответственно: '))
+            if choice in (1,2):
+                break
+            else:
+                print("Недопустимое число, введите число заново!")
+        except ValueError as ve:
+            print(f'Недопустимое значение, введите число! {ve}')
+
+    if choice == 1:
+        while True:
+            pars_currency(data_for_choice, currency)
+            time.sleep(1)
+    else:
+        return pars_history_tabel(data_for_choice + "-historical-data")
 
 
+def pars_currency(choice,currency):
+    locale.setlocale(locale.LC_ALL, 'ru_RU.UTF-8')
+    values = []
+    timeline = []
+    try:
+        response = requests.get(choice, headers=headers)
+        if response.status_code == 200:
+            soup = BS(response.text, 'html.parser')
+            time = datetime.datetime.now()
+            #test = soup.find_all('div', class_='text-5xl font-bold leading-9 md:text-[42px] md:leading-[60px] text-[#232526]')
+            #test = test[0]
+            #text = test.text
+            #print(text)
+            value = soup.find(attrs={"data-test": "instrument-price-last"})
+            if value:
+                value = locale.atof(soup.find(attrs={"data-test": "instrument-price-last"}).text.strip())
+                print(f"Текущий курс {currency}", value)
+            else:
+                value = soup.find_all('div', class_="text-5xl") #locale.atof(soup.find(attrs={"class": "text-5xl font-bold leading-9 md:text-[42px] md:leading-[60px] text-[#232526]"}).text.strip())
+                if value is not None:
+                    text = value[0]
+                    value_text = text.text
+                    value_text = value_text.replace('.','')
+                    value = locale.atof(value_text)
+                    print(f"Текущий курс {currency}", value)
+            timeline.append(time)
+            values.append(value)
+    except Exception as e:
+        print(f"Error: {e}")
+
+
+def pars_history_tabel(choice):
+    '''  form = soup.find('form', id='widgetFieldDateRange')
+            form_data = {
+                'pair_base': '1',
+                'pair_quote': '18',
+                'smlID': '300004',
+                'st_date': '01/01/2023',
+                'end_date': '12/31/2023',
+                'interval_sec': 'Daily',
+                'action': 'historical_data',
+            }
+            response.request.post(choice, data=form_data, headers=headers)
+            if response.status_code == 200:'''
+    dict_history = {'Date':[],'Price':[], 'Percentage':[]}
+    try:
+        response = requests.get(choice, headers=headers)
+        if response.status_code == 200:
+            soup = BS(response.text, 'html.parser')
+            table = soup.find('table', class_=['datatable_table__DE_1_ datatable_table--border__XOKr2 datatable_table--mobile-basic__rzXxT datatable_table--freeze-column__XKTDf','w-full text-xs leading-4 overflow-x-auto freeze-column-w-1'])
+            if table:
+                rows = table.find_all('tr')
+                for row in rows[1:]:
+                    columns = row.find_all('td')
+                    date = columns[0].text.strip()
+                    cost = columns[1].text.strip()
+                    percent = columns[6].text.strip()
+                    dict_history['Date'].append(date)
+                    dict_history['Price'].append(cost)
+                    dict_history['Percentage'].append(percent)
+            print_dict_as_columns(dict_history)
+    except Exception as e:
+        print(f"Error: {e}")
+    return dict_history
 
 
 
@@ -50,7 +139,7 @@ def find_curr(url):
                 name = link.get('title')
                 total_link = "https://ru.investing.com/" + link.get('href')
                 count = count+1
-                dict_curr['Currency'].append(name)  # Добавляем 'name' в ключ 'Currency'
+                dict_curr['Currency'].append(name)
                 dict_curr['Link'].append(total_link)
                 #print(link)
                 #print(total_link)
@@ -64,10 +153,16 @@ def find_curr(url):
 
 def main():
     result = find_curr(url)
-    print_dict_as_columns(result)
+    #print_dict_as_columns(result)
     select = select_filter(result)
     data = select_from_url(select[0],select[1])
     print(data)
+    data_for_choice = data.get('Link')
+    currency = data.get('Currency')
+    print(data_for_choice)
+    choice = (choice_time(data_for_choice, currency))
+    #print(choice)
+
 
 if __name__ == '__main__':
     main()
