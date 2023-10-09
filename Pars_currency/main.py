@@ -2,6 +2,8 @@
 import datetime
 
 import matplotlib.pyplot as plt
+#from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.animation as animation
 from bs4 import BeautifulSoup as BS
 import numpy as np
 import requests
@@ -54,7 +56,7 @@ def choice_time(data_for_choice, currency):
             pars_currency(data_for_choice, currency)
             time.sleep(1)
     else:
-        return pars_history_tabel(data_for_choice + "-historical-data")
+        return pars_history_tabel(data_for_choice + "-historical-data", currency)
 
 
 def pars_currency(choice,currency):
@@ -84,11 +86,37 @@ def pars_currency(choice,currency):
                     print(f"Текущий курс {currency}", value)
             timeline.append(time)
             values.append(value)
+            plt.ion()
+            fig, ax = plt.subplots()
+            line1, = ax.plot(timeline, values)
+            ax.legend()
+            plt.xlabel('Индекс времени')
+            plt.ylabel('Курс валюты')
+            plt.title(f'График курса {currency}')
+            line1.set_xdata(timeline)
+            line1.set_ydata(values)
+            plt.clf()
+            plt.show()
+            #plt.plot(timeline, values, marker='o', linestyle='-', color='b')
+
+            # Отображаем обновленный график
+            plt.pause(1)
+
     except Exception as e:
-        print(f"Error: {e}")
+            print(f"Error: {e}")
 
+'''fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.set_xlabel('Индекс')
+ax.set_ylabel('Время (секунды)')
+ax.set_zlabel('Курс')
+'''
+'''# Устанавливаем начальное значение оси Z
+max_value = 110  # Это значение зависит от ваших ожиданий
+ax.set_zlim(0, max_value)
+'''
 
-def pars_history_tabel(choice):
+def pars_history_tabel(choice, currency):
     '''  form = soup.find('form', id='widgetFieldDateRange')
             form_data = {
                 'pair_base': '1',
@@ -118,6 +146,17 @@ def pars_history_tabel(choice):
                     dict_history['Price'].append(cost)
                     dict_history['Percentage'].append(percent)
             print_dict_as_columns(dict_history)
+            plt.figure(figsize=(20, 12))
+            plt.plot(dict_history['Date'], dict_history['Price'], marker='o', linestyle='-', color='b')
+            plt.title(f'График курса {currency}')
+            plt.xlabel('Дата')
+            plt.ylabel('Цена')
+            plt.xticks(rotation=45)  # Rotate x-axis labels for better visibility
+            plt.tight_layout()
+            plt.gca().invert_yaxis()
+            plt.gca().invert_xaxis()
+            plt.show()
+
     except Exception as e:
         print(f"Error: {e}")
     return dict_history
